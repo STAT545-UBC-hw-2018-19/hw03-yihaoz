@@ -1,0 +1,183 @@
+---
+title: "Homework 03: Use dplyr/ggplot2 to manipulate and explore data"
+output: 
+    github_document
+editor_options: 
+  chunk_output_type: inline
+---
+
+## Bring rectangular data in
+Work with the gapminder data we explored in class.
+
+```{r}
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(gapminder))
+suppressMessages(library(knitr))
+```
+
+
+### Task 1: Get the maximum and minimum of GDP per capita for all continents.
+
+To get the maximum and minimum of GDP Percapita for all continents, use `groupby()` to group the data by continents, then use `summarise()` with max and min to get the values. To create the table, use `knitr::kable()` as suggested by the instructor.`align = 'c'` to align the entries to centre.
+
+```{r}
+gdpPercap_table_1 <- gapminder %>% 
+                      group_by(continent) %>% 
+                      summarise(maxGdpPercap = max(gdpPercap),
+                      minGdpPercap = min(gdpPercap))
+knitr::kable(gdpPercap_table_1, align = 'c')
+```
+
+
+To visualize the max and min gdpPercap for each continent, we can plot the jitter points for gdpPercap vs continent and mark the maximum and minimum. `scale_y_log10()` is used since gdpPercap has very large values. `stat_summary()` can be used to plot max and min on the same graph. [Resource for stat_summary()](https://ggplot2.tidyverse.org/reference/stat_summary.html)
+
+```{r}
+gapminder %>% 
+  ggplot(aes(continent, gdpPercap)) + 
+  scale_y_log10() + 
+  geom_jitter(aes(colour = continent), alpha = 0.2) + 
+  stat_summary(fun.y = min, colour = "blue", geom = "point", size = 2) +
+  stat_summary(fun.y = max, colour = "orange", geom = "point", size = 2)
+```
+
+From the figure above, we can see the max and min GDP per capita for each continent. Additionally, the data distribution can also be observed which is similar as Task 2 below. It can also be noticed that the number of data sets for Oceania is significantly smaller than other continents which also makes sense. 
+
+
+### Task 2: Look at the spread of GDP per capita within the continents.
+
+To get the spread of GDP per capita within all continents, we first need to use `groupby()` to group the data by continents. Then use `summarise()` to get several analysis. 
+
+```{r}
+gdpPercap_table_2 <- gapminder %>% 
+                    group_by(continent) %>% 
+                    summarise(minGdpPercap = max(gdpPercap),
+                              maxGdpPercap = min(gdpPercap),
+                              sdGdpPerxcap = sd(gdpPercap),
+                              meanGdpPercap = mean(gdpPercap))
+gdpPercap_table_2
+```
+
+To create the table, use `knitr::kable()` as suggested by the instructor.`align = 'c'` to align the entries to centre.
+
+```{r}
+knitr::kable(gdpPercap_table_2, align = 'c')
+```
+
+To visualize the spread of gdpPercap within all continents, the violin plot of gdpPercap vs continent can be used.Since gdpPercap has large values, log scale can be used. 
+
+```{r}
+gapminder %>% 
+  ggplot(aes(continent, gdpPercap)) + 
+  scale_y_log10() + 
+  geom_violin(aes(colour = continent)) + 
+  geom_jitter(aes(colour = continent), alpha = 0.2)
+```
+
+The violin plot gives a clear overview of data distribution and spread. However, it doesn't show the medium and mean values clearly. Instead, box plot can be used for such purpose.
+
+```{r}
+gapminder %>% 
+  ggplot(aes(continent, gdpPercap)) + 
+  scale_y_log10() + 
+  geom_boxplot(aes(colour = continent)) + 
+  geom_jitter(aes(colour = continent), alpha = 0.2)
+```
+
+In conclusion, the violin plot gives better view in terms of data spread. Box plot gives a clear view of mean, max and min instead. They can be chosen by specific purpose. 
+
+
+### Task 3: Compute a trimmed mean of life expectancy for different years. Or a weighted mean, weighting by population.
+
+To calculated trimmed mean, `mean(x, trim = 0, na.rm = FALSE, …)` can be used. I used trim = 0.1. For weighted mean, `weighted.mean(x, w, ..., na.rm = FALSE)` can be used.
+
+```{r}
+gapminder %>% 
+  group_by(year) %>% 
+  summarise(trimmed_mean = mean(lifeExp, trim = 0.1),
+            weighted_mean = weighted.mean(lifeExp, pop)) %>% 
+  knitr::kable(align = 'c')
+```
+
+To visualize the data, line plot with points can be used. 
+
+```{r}
+gapminder %>% 
+  group_by(year) %>% 
+  summarise(trimmed_mean = mean(lifeExp, trim = 0.1),
+            weighted_mean = weighted.mean(lifeExp, pop)) %>% 
+  ggplot() +
+  geom_line(aes(year, trimmed_mean, colour = "trimmed_mean")) + 
+  geom_line(aes(year, weighted_mean, colour = "weighted_mean")) + 
+  geom_point(aes(year, trimmed_mean, colour = "trimmed_mean")) + 
+  geom_point(aes(year, weighted_mean, colour = "weighted_mean")) + 
+  labs(x = "year", y = "lifeExp")
+  
+```
+
+From the plot above, the lifeExp grows with year but with slight differences between trimmed mean and weighted mean.
+
+
+### Task 4: How is life expectancy changing over time on different continents?
+
+To get the life expectancy change over time on different continents, first we need to calculate the mean lifeExp for each continent in each year.
+
+```{r}
+lifeExpChange <- gapminder %>% 
+                  group_by(continent, year) %>% 
+                  summarise(mean = mean(lifeExp)) %>% 
+                  mutate(change_by_previous = mean - lag(mean))
+continentLifeExpChange <- split(lifeExpChange, lifeExpChange$continent)
+
+for (i in 1:length(continentLifeExpChange)){
+    print(kable(continentLifeExpChange[[i]], align = 'c'))
+}
+```
+
+From the tables, most of the changes are positive. We can see that it is always increasing other than 1997 and 2002 in Africa. The amount of increment can also be observed
+
+To visualize the data, we can plot the mean of lifeExp of each year and facet by continent.
+
+```{r}
+lifeExpChange
+
+ggplot(lifeExpChange) + 
+  facet_wrap(~ continent, scale = "fixed") + 
+  geom_line(aes(year, mean)) + 
+  geom_point(aes(year, mean))
+
+```
+
+Another way is to use `geom_smooth()` to show the trend without computing the mean. `geom_line()` and `geom_point()` with facet by continent can be used to visualize the life expectancy changing over time on different continents. Use `geom_smooth()` with `method = "auto"`, the trend of life expectancy changing over time can be shown. For method = "auto" the smoothing method is chosen based on the size of the largest group (across all panels). 
+
+```{r}
+ggplot(gapminder, aes(year, lifeExp)) + 
+  facet_wrap( ~ continent) + 
+  geom_point(alpha = 0.2) +
+  geom_smooth(method = "auto", se=FALSE)
+```
+
+
+## But I want to do more!
+### Layout stretch goal: get table and figure side-by-side.
+
+Tried the approach by css but not working. Didn't find a solution for table and figure side by side.
+
+However, found a solution for table and table side by side: [stackoverflow answer](https://stackoverflow.com/questions/17717323/align-two-data-frames-next-to-each-other-with-knitr)
+
+```{r two-tables, results='asis'}
+t1 = kable(gdpPercap_table_1, format='html', output = FALSE)
+t2 = kable(gdpPercap_table_2, format='html', output = FALSE)
+f1 = ggplot(gapminder,aes(year, gdpPercap)) + geom_line()
+cat(c('<table><tr valign="top"><td>', t1, '</td><td>', t2, '</td><tr></table>'),
+    sep = '')
+```
+
+### Table stretch goal: there are some really nice fancy table helper packages
+```{r}
+library(pander)
+panderOptions("table.style", "multiline")  # The default
+pander(gdpPercap_table_2)
+panderOptions("table.style", "grid")
+pander(gdpPercap_table_2)
+```
+
