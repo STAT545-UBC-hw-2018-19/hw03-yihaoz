@@ -202,7 +202,7 @@ pander(gdpPercap_table_2,
        caption = "gdpPercap analysis with multiline style")
 ```
 
-For `stargazer()`, it will output the statistics for data by default. Here I used `stargazer()` to run the analysis for Canada's lifeExp, gdpPercap and population. 
+For `stargazer()`, it will output the statistics for data by default. Here I used `stargazer()` to run the analysis for Canada's lifeExp, gdpPercap and population. [stargazer R documentation]("https://www.rdocumentation.org/packages/stargazer/versions/5.2.2/topics/stargazer")
 ```{r}
 data <- gapminder %>% 
   filter(country == "Canada") %>% 
@@ -211,3 +211,4 @@ data <- gapminder %>%
 stargazer(as.data.frame(data), type = "text")
 ```
 
+For `stargazer()`, I only found the output type of latex, html/css and ASCI.  However, neither latex nor html seems to work since the output for this rmd file was configured to github_document. I just used ASCII text output. Is there any workaround for addressing this issue?
